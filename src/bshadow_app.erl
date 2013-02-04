@@ -10,7 +10,8 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    bshadow_sup:start_link().
+    bshadow:init()
+    ,bshadow_sup:start_link().
 
 stop(_State) ->
     ok.

@@ -32,15 +32,22 @@ def main():
             ,'name' : random.choice('abcdefghijklmnopqrstuvwxyz') * 3
             ,'length' : str(random.randint( 0 , 1000000 ))
         }
-        msg = ''
-        for k,v in data.iteritems():
-            lenk = len(k)
-            lenv = len(v)
-            msg += pack( '>' + str(lenk+1) + 'ph' + str(lenv) + 's' , k ,lenv, v )
+        msg = madebin( data )
         s.send( msg , copy=False )
         i += 1
-        print 'has send '+ str(i) + ' message'
+        if i % 10000 == 0:
+            print str(i) + ' messages has send '
+    print str(i)+' messages has send '
+    print 'finish'
 
+def madebin( data ):
+    msg = ''
+    for k,v in data.iteritems():
+        lenk = len(k)
+        lenv = len(v)
+        msg += pack( '>' + str(lenk+1) + 'ph' + str(lenv) + 's' , k ,lenv, v )
+    return msg
+    
 def connzmq( host ):
     ctx = zmq.Context()
     s = ctx.socket(zmq.PUB)

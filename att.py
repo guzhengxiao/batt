@@ -1,16 +1,31 @@
 #!/opt/local/bin/python2.7
 
-import zmq, getopt , sys , random, time
+import zmq, getopt , sys , random, time 
+from threading import Thread
 from struct import *
 def main():
-    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:" )
+    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:" )
     send_count = 1
+    thread_count = 1
+    sleep_time = 0
     zmq_host = 'tcp://127.0.0.1:5858'
     unlimit = False
     for o,a in opts:
         if o == '-h':
             echohelp()
             sys.exit(0)
+        if o == '-t' :
+            try:
+                thread_count = int( a )
+            except:
+                print '-t must be integer'
+                sys.exit(1)
+        if o == '-s' :
+            try:
+                sleep_time = float( a )
+            except:
+                print '-t must be number'
+                sys.exit(1)
         if o == '-n':
             try:
                 send_count = int( a )
@@ -23,7 +38,16 @@ def main():
         if o == '-z':
             zmq_host = a
     s = connzmq(zmq_host)
+    try:
+        for i in range( 0 , thread_count ):
+            t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,s ) ) 
+            t.start()
+            #t.join()
+    except Exception as errtxt:
+        print errtxt
 
+def send( item,unlimit, zmq_host , send_count , sleep_time , s) :
+    item += 1
     i = 0
     while unlimit == True or i < send_count :
         data = {
@@ -36,9 +60,12 @@ def main():
         s.send( msg , copy=False )
         i += 1
         if i % 10000 == 0:
-            print str(i) + ' messages has send '
-    print str(i)+' messages has send '
-    print 'finish'
+            print 'thread ' + str(item) + ' ' + str(i) + ' messages has send '
+        if sleep_time >0 :
+            time.sleep( sleep_time )
+    print 'thread ' + str(item) + ' ' + str(i)+' messages has send '
+    print 'thread ' + str(item) + ' finish'
+    
 
 def madebin( data ):
     msg = ''

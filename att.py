@@ -1,19 +1,23 @@
 #!/opt/local/bin/python2.7
 
-import zmq, getopt , sys , random, time 
+import zmq, getopt , sys , random, time ,yaml
 from threading import Thread
 from struct import *
 def main():
-    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:" )
+    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:f:" )
     send_count = 1
     thread_count = 1
     sleep_time = 0
     zmq_host = 'tcp://127.0.0.1:5858'
     unlimit = False
+    bdata = None
     for o,a in opts:
         if o == '-h':
             echohelp()
             sys.exit(0)
+        if o == '-f':
+            f = open(a)
+            bdata = yaml.load(f)
         if o == '-t' :
             try:
                 thread_count = int( a )
@@ -40,22 +44,19 @@ def main():
     s = connzmq(zmq_host)
     try:
         for i in range( 0 , thread_count ):
-            t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,s ) ) 
+            t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,bdata,s ) ) 
             t.start()
-            #t.join()
     except Exception as errtxt:
         print errtxt
 
-def send( item,unlimit, zmq_host , send_count , sleep_time , s) :
+def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
     item += 1
     i = 0
     while unlimit == True or i < send_count :
-        data = {
-            '@class' : 'bnow_test'
-            ,'@time' : str(int(time.time()))
-            ,'name' : random.choice('abcdefghijklmnopqrstuvwxyz') * 3
-            ,'length' : str(random.randint( 0 , 1000000 ))
-        }
+        if bdata == None:
+            data = random_data()
+        else:
+            data = choice_data( bdata )
         msg = madebin( data )
         s.send( msg , copy=False )
         i += 1
@@ -70,6 +71,7 @@ def send( item,unlimit, zmq_host , send_count , sleep_time , s) :
 def madebin( data ):
     msg = ''
     for k,v in data.iteritems():
+        v = str(v)
         lenk = len(k)
         lenv = len(v)
         msg += pack( '>' + str(lenk+1) + 'ph' + str(lenv) + 's' , k ,lenv, v )
@@ -80,6 +82,17 @@ def connzmq( host ):
     s = ctx.socket(zmq.PUB)
     s.connect(host)
     return s
+
+def random_data():
+    return {
+        '@class' : 'bnow_test'
+        ,'@time' : str(int(time.time()))
+        ,'name' : random.choice('abcdefghijklmnopqrstuvwxyz') * 3
+        ,'length' : str(random.randint( 0 , 1000000 ))
+    }
+def choice_data(bdata):
+    return random.choice(bdata)
+    
     
 def echohelp():
     print 'hello i\'m help'

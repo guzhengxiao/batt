@@ -47,7 +47,7 @@ def main():
             t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,bdata,s ) ) 
             t.start()
     except:
-        print 'Thread error'
+        print 'Thread error  '
 
 def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
     item += 1

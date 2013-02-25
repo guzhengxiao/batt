@@ -79,7 +79,7 @@ def madebin( data ):
     
 def connzmq( host ):
     ctx = zmq.Context()
-    s = ctx.socket(zmq.PUB)
+    s = ctx.socket(zmq.PUSH)
     s.connect(host)
     return s
 

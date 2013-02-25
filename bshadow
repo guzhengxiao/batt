@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/local//bnow/bin/bshadow $1

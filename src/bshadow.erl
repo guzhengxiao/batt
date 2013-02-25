@@ -1,39 +1,42 @@
 -module( bshadow ).
--export([start/0, init/0 , store/3 , fetch/2, fold/2]).
+-export([start/0, init/0 , store/2 , fetch/1, fold/2]).
 
 start()->
     application:start(bshadow).
 
+% record { time ,  msg , receive_time }
 init() -> 
-    case ets:info(bshadow_msg) of
-        undefined -> ets:new(bshadow_msg , [named_table , ordered_set, public])
+    case ets:info(?MODULE) of
+        undefined -> ets:new(?MODULE , [named_table , duplicate_bag , public])
         ;_ -> ok
     end
     ,ok.
 
-store( Key , Time , Msg ) when is_binary(Key ) andalso is_integer(Time) andalso is_binary(Msg) ->
-    ets:insert(bshadow_msg , { { Key , Time } , Msg })
-;store( _ , _ , _ ) -> badargs.
+store( Time , Msg ) when is_integer(Time) ->
+    ets:insert(?MODULE , { Time , term_to_binary( Msg ) , bshadow_timer:now() })
+;store( _ , _  ) -> badargs.
 
-fetch( Key , Time ) when is_binary(Key) andalso is_integer(Time) ->
-    Rs = ets:lookup(bshadow_msg , { Key , Time } )
-    ,if 
-        Rs =:= [{{Key , Time} , undefined}] -> [] 
-        ;true -> Rs 
+fetch( Time ) when is_integer(Time) ->
+    case ets:lookup(?MODULE ,  Time  ) of
+        [{Time,undefined,0}] -> []
+        ;A -> A
     end
-;fetch(_,_) -> badargs.
+;fetch(_) -> badargs.
 
-fold(  {Key,Time} = Start , Len ) when is_binary(Key) andalso is_integer(Time) andalso is_integer(Len) ->
-    ets:insert_new(bshadow_msg , {Start , undefined} )
-    ,fold( Start ,Len ,[])
+fold( Start , Len ) when is_integer(Start) andalso is_integer(Len) ->
+    ets:insert_new(?MODULE , {Start , undefined,0} )
+    ,fold( Start ,Len ,[] )
 ;fold( _ , _ ) -> badargs.
     
 fold(K , L , R) when K =:= '$end_of_table' orelse L =< 0 ->
     R
 ;fold(K , L , R) -> 
-    case ets:lookup( bshadow_msg, K ) of
-        [] -> fold( ets:next( bshadow_msg , K ) , L , R)
-        ;[{_ , undefined}] -> fold( ets:next(bshadow_msg , K ) , L,R)
-        ;V -> fold( ets:next(bshadow_msg , K) , L -1 , R++V )
+    case ets:lookup( ?MODULE, K ) of
+        [] -> fold( ets:next( ?MODULE , K ) , L , R)
+        ;[{_ , undefined,0}] -> fold( ets:next(?MODULE , K ) , L,R)
+        ;V -> fold( ets:next(?MODULE , K) , L -1 , R++V )
     end.
 
+%do( N ,M , F , A ) ->
+%    rpc:call( N , bnow , eval , [  ]  )
+%    ,apply( M , F , A ).

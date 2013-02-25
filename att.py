@@ -46,8 +46,8 @@ def main():
         for i in range( 0 , thread_count ):
             t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,bdata,s ) ) 
             t.start()
-    except Exception as errtxt:
-        print errtxt
+    except:
+        print 'Thread error'
 
 def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
     item += 1

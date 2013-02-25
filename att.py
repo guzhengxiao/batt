@@ -52,9 +52,11 @@ def main():
 def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
     item += 1
     i = 0
+    time1 = str(int(time.time()))
     while unlimit == True or i < send_count :
         if bdata == None:
             data = random_data()
+            data['@time'] = time1
         else:
             data = choice_data( bdata )
         msg = madebin( data )

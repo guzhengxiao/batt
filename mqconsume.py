@@ -77,7 +77,7 @@ def nextfile():
 
 def checkfile(filename1, fb1):
     global filename , fb
-    if os.path.getsize(filename1) > 1024*1024*2 :
+    if os.path.getsize(filename1) > 1024*1024*100 :
         fb1.close()
         filename = nextfile()
         fb = open( filename , 'w+' )

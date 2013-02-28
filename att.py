@@ -1,16 +1,17 @@
 #!/opt/local/bin/python2.7
 
-import zmq, getopt , sys , random, time ,yaml
+import zmq, getopt , sys , random, time ,yaml , mqconsume
 from threading import Thread
 from struct import *
 def main():
-    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:f:" )
+    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:f:q:" )
     send_count = 1
     thread_count = 1
     sleep_time = 0
     zmq_host = 'tcp://127.0.0.1:5858'
     unlimit = False
     bdata = None
+    mq_host = None
     for o,a in opts:
         if o == '-h':
             echohelp()
@@ -41,13 +42,25 @@ def main():
                     sys.exit(1)
         if o == '-z':
             zmq_host = a
+        if o == '-q':
+            mq_host = a
     s = connzmq(zmq_host)
-    try:
-        for i in range( 0 , thread_count ):
-            t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,bdata,s ) ) 
-            t.start()
-    except:
-        print 'Thread error  '
+    if mq_host != None:
+        mqconsume.get_message("test_bnow" , mq_host)
+    else:
+        try:
+            for i in range( 0 , thread_count ):
+                t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,bdata,s ) ) 
+                t.start()
+        except:
+            print 'Thread error  '
+
+def callback(ch, method, properties, body):
+   zmqsend(body)
+   #print " [x] Received %r" % (body,)
+   # time.sleep( body.count('.') )
+   #print " [x] Done"
+   ch.basic_ack(delivery_tag = method.delivery_tag)
 
 def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
     item += 1
@@ -59,8 +72,7 @@ def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
             data['@time'] = time1
         else:
             data = choice_data( bdata )
-        msg = madebin( data )
-        s.send( msg , copy=False )
+        zmqsend(data)
         i += 1
         if i % 10000 == 0:
             print 'thread ' + str(item) + ' ' + str(i) + ' messages has send '
@@ -69,6 +81,9 @@ def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
     print 'thread ' + str(item) + ' ' + str(i)+' messages has send '
     print 'thread ' + str(item) + ' finish'
     
+def zmqsend( data ):
+    msg = madebin( data )
+    s.send( msg , copy=False )
 
 def madebin( data ):
     msg = ''

@@ -12,7 +12,7 @@ import pika
 import sys
 import time
 import commands
-import yaml
+import json
 import os
 
 filename = None
@@ -58,7 +58,7 @@ def get_queue_name(message):
 
 def callback(ch, method, properties, body):
     global filename , fb
-    bdata = yaml.dump(body)
+    bdata = body.encode('utf-8')+"\n"
     checkfile( filename , fb )
     fb.write(bdata)
     ch.basic_ack(delivery_tag = method.delivery_tag)
@@ -77,7 +77,7 @@ def nextfile():
 
 def checkfile(filename1, fb1):
     global filename , fb
-    if os.path.getsize(filename1) > 1024*1024*10 :
+    if os.path.getsize(filename1) > 1024*1024*2 :
         fb1.close()
         filename = nextfile()
         fb = open( filename , 'w+' )

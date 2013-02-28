@@ -1,24 +1,27 @@
 #!/opt/local/bin/python2.7
 
-import zmq, getopt , sys , random, time ,yaml , mqconsume
+# coding=utf-8
+import zmq, getopt , sys , random, time ,json, mqconsume
 from threading import Thread
 from struct import *
+bdata = []
 def main():
-    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:f:q:" )
+    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:f:q" )
+    global bdata
     send_count = 1
     thread_count = 1
     sleep_time = 0
     zmq_host = 'tcp://127.0.0.1:5858'
     unlimit = False
-    bdata = None
-    mq_host = None
+    repeat = False
     for o,a in opts:
         if o == '-h':
             echohelp()
             sys.exit(0)
         if o == '-f':
-            f = open(a)
-            bdata = yaml.load(f)
+            f = open(a , "r")
+            for dataline in f:
+                bdata.append( json.loads(dataline) )
         if o == '-t' :
             try:
                 thread_count = int( a )
@@ -43,26 +46,26 @@ def main():
         if o == '-z':
             zmq_host = a
         if o == '-q':
-            mq_host = a
+            repeat = True
     s = connzmq(zmq_host)
-    if mq_host != None:
-        mqconsume.get_message("test_bnow" , mq_host)
+    if repeat == True and bdata != [] :
+        i = 0
+        for zdata in bdata:
+            i += 1
+            zmqsend( zdata , s )
+            if i % 1000 == 0:
+                print 'has send ' + str(i) + ' messages '
+        print 'finished , has send ' + str(i) + ' message '
     else:
         try:
             for i in range( 0 , thread_count ):
-                t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,bdata,s ) ) 
+                t = Thread(None , send , None , ( i,unlimit, zmq_host , send_count , sleep_time ,s ) ) 
                 t.start()
         except:
             print 'Thread error  '
 
-def callback(ch, method, properties, body):
-   zmqsend(body)
-   #print " [x] Received %r" % (body,)
-   # time.sleep( body.count('.') )
-   #print " [x] Done"
-   ch.basic_ack(delivery_tag = method.delivery_tag)
-
-def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
+def send( item,unlimit, zmq_host , send_count , sleep_time ,  s) :
+    global bdata
     item += 1
     i = 0
     time1 = str(int(time.time()))
@@ -71,8 +74,8 @@ def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
             data = random_data()
             data['@time'] = time1
         else:
-            data = choice_data( bdata )
-        zmqsend(data)
+            data = choice_data()
+        zmqsend(data,s)
         i += 1
         if i % 10000 == 0:
             print 'thread ' + str(item) + ' ' + str(i) + ' messages has send '
@@ -81,14 +84,18 @@ def send( item,unlimit, zmq_host , send_count , sleep_time , bdata, s) :
     print 'thread ' + str(item) + ' ' + str(i)+' messages has send '
     print 'thread ' + str(item) + ' finish'
     
-def zmqsend( data ):
+def zmqsend( data ,s ):
     msg = madebin( data )
     s.send( msg , copy=False )
 
 def madebin( data ):
     msg = ''
     for k,v in data.iteritems():
-        v = str(v)
+        k = str(k)
+        if type(v) == type(u''):
+            v = v.encode( 'utf-8' )
+        else :
+            v = str(v)
         lenk = len(k)
         lenv = len(v)
         msg += pack( '>' + str(lenk+1) + 'ph' + str(lenv) + 's' , k ,lenv, v )
@@ -107,7 +114,8 @@ def random_data():
         ,'name' : random.choice('abcdefghijklmnopqrstuvwxyz') * 3
         ,'length' : str(random.randint( 0 , 1000000 ))
     }
-def choice_data(bdata):
+def choice_data():
+    global bdata
     return random.choice(bdata)
     
     

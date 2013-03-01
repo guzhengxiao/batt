@@ -1,12 +1,12 @@
 #!/opt/local/bin/python2.7
 
 # coding=utf-8
-import zmq, getopt , sys , random, time ,json, mqconsume
+import zmq, getopt , sys , random, time ,json, mqconsume, os
 from threading import Thread
 from struct import *
 bdata = []
 def main():
-    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:f:q" )
+    opts , args = getopt.getopt( sys.argv[1:] , "hn:z:t:s:f:qc:" )
     global bdata
     send_count = 1
     thread_count = 1
@@ -14,14 +14,21 @@ def main():
     zmq_host = 'tcp://127.0.0.1:5858'
     unlimit = False
     repeat = False
+    classname = ''
     for o,a in opts:
         if o == '-h':
             echohelp()
             sys.exit(0)
-        if o == '-f':
+        if o == '-q':
+            repeat = True
+        if o == '-f' and repeat == False:
             f = open(a , "r")
             for dataline in f:
-                bdata.append( json.loads(dataline) )
+                try : 
+                    tjson = json.loads(dataline)
+                    bdata.append( tjson )
+                except :
+                    continue
         if o == '-t' :
             try:
                 thread_count = int( a )
@@ -34,6 +41,8 @@ def main():
             except:
                 print '-t must be number'
                 sys.exit(1)
+        if o == '-c':
+            classname = a
         if o == '-n':
             try:
                 send_count = int( a )
@@ -45,16 +54,25 @@ def main():
                     sys.exit(1)
         if o == '-z':
             zmq_host = a
-        if o == '-q':
-            repeat = True
     s = connzmq(zmq_host)
-    if repeat == True and bdata != [] :
+    if repeat == True :
+        bdata = []
         i = 0
-        for zdata in bdata:
-            i += 1
-            zmqsend( zdata , s )
-            if i % 1000 == 0:
-                print 'has send ' + str(i) + ' messages '
+        for bdatafile in os.listdir('.'):
+            if bdatafile[-6:] == '.bdata':
+                print bdatafile
+                bdatafp = open( bdatafile, "r" )
+                for bdataline in bdatafp:
+                    try : 
+                        zdata = json.loads(bdataline)
+                        i += 1
+                        zdata['@class'] = classname
+                        zdata['@time'] = time.time()
+                        zmqsend( zdata , s )
+                        if i % 1000 == 0:
+                            print 'has send ' + str(i) + ' messages '
+                    except :
+                        continue
         print 'finished , has send ' + str(i) + ' message '
     else:
         try:
@@ -70,7 +88,7 @@ def send( item,unlimit, zmq_host , send_count , sleep_time ,  s) :
     i = 0
     time1 = str(int(time.time()))
     while unlimit == True or i < send_count :
-        if bdata == None:
+        if bdata == []:
             data = random_data()
             data['@time'] = time1
         else:
@@ -91,9 +109,14 @@ def zmqsend( data ,s ):
 def madebin( data ):
     msg = ''
     for k,v in data.iteritems():
-        k = str(k)
+        if type(k) == type(u''):
+            k = k.encode('utf-8')
+        else:
+            k = str(k)
         if type(v) == type(u''):
             v = v.encode( 'utf-8' )
+        elif type(v) == type({}) or type(v) == type([]):
+            v = json.dumps(v)
         else :
             v = str(v)
         lenk = len(k)

@@ -21,7 +21,7 @@ def main():
             sys.exit(0)
         if o == '-q':
             repeat = True
-        if o == '-f' and repeat == False:
+        if o == '-f':
             f = open(a , "r")
             for dataline in f:
                 try : 
@@ -56,23 +56,32 @@ def main():
             zmq_host = a
     s = connzmq(zmq_host)
     if repeat == True :
-        bdata = []
+        #bdata = []
         i = 0
-        for bdatafile in os.listdir('.'):
-            if bdatafile[-6:] == '.bdata':
-                print bdatafile
-                bdatafp = open( bdatafile, "r" )
-                for bdataline in bdatafp:
-                    try : 
-                        zdata = json.loads(bdataline)
-                        i += 1
-                        zdata['@class'] = classname
-                        zdata['@time'] = time.time()
-                        zmqsend( zdata , s )
-                        if i % 1000 == 0:
-                            print 'has send ' + str(i) + ' messages '
-                    except :
-                        continue
+        if bdata == []:
+            for bdatafile in os.listdir('.'):
+                if bdatafile[-6:] == '.bdata':
+                    print bdatafile
+                    bdatafp = open( bdatafile, "r" )
+                    for bdataline in bdatafp:
+                        try : 
+                            zdata = json.loads(bdataline)
+                            i += 1
+                            zdata['@class'] = classname
+                            zdata['@time'] = time.time()
+                            zmqsend( zdata , s )
+                            if i % 1000 == 0:
+                                print 'has send ' + str(i) + ' messages '
+                        except :
+                            continue
+        else:
+            for zdata in bdata:
+                i += 1
+                zdata['@class'] = classname
+                zdata['@time'] = time.time()
+                zmqsend( zdata , s )
+                if i % 1000 == 0:
+                    print 'has send ' + str(i) + ' messages '
         print 'finished , has send ' + str(i) + ' message '
     else:
         try:
@@ -81,6 +90,8 @@ def main():
                 t.start()
         except:
             print 'Thread error  '
+
+qsend( zdata )
 
 def send( item,unlimit, zmq_host , send_count , sleep_time ,  s) :
     global bdata
@@ -93,6 +104,7 @@ def send( item,unlimit, zmq_host , send_count , sleep_time ,  s) :
             data['@time'] = time1
         else:
             data = choice_data()
+        print data
         zmqsend(data,s)
         i += 1
         if i % 10000 == 0:

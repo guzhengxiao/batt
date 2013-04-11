@@ -91,7 +91,7 @@ def main():
         except:
             print 'Thread error  '
 
-qsend( zdata )
+#qsend( zdata )
 
 def send( item,unlimit, zmq_host , send_count , sleep_time ,  s) :
     global bdata
